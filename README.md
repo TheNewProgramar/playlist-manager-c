@@ -27,3 +27,13 @@ gcc -Wall -Wextra -o playlist_manager main.c
 ```bash
 ./playlist_manager
 ```
+## 📚 Learning Goals
+This project demonstrates:
+
+    Linked list data structure
+
+    Node insertion/deletion
+
+    Traversal
+
+    Memory management
