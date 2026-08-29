@@ -22,3 +22,8 @@ A simple playlist manager written in C using linked lists.
 
 ```bash
 gcc -Wall -Wextra -o playlist_manager main.c
+```
+## 🏃 How to Run
+```bash
+./playlist_manager
+```
