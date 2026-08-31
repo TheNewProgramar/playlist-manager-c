@@ -1,146 +1,178 @@
-#include <stdio.h>
+#include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct Node
-{
-    int data;
-    struct Node *next;
+struct Song {
+    char title[100];
+    struct Song *next;
 };
 
-struct Node* create_node(int value);
-void print_list(struct Node *head);
-struct Node* insert_at_beginning(struct Node *head, int value);
-struct Node* insert_at_end(struct Node *head, int value);
-struct Node* delete_node(struct Node *head, int value);
-int search_node(struct Node *head, int value);
+// Function prototypes
+struct Song* add_song(struct Song *head, char *title);
+void view_playlist(struct Song *head, WINDOW *win);
+struct Song* delete_song(struct Song *head, char *title);
 
 int main()
 {
-    struct Node *first = create_node(5);
-    struct Node *second = create_node(10);
-    struct Node *third = create_node(15);
-
-    first->next = second;
-    second->next = third;
-
-    first = insert_at_beginning(first, 2);
-    print_list(first);
-
-    first = insert_at_end(first, 20);
-    print_list(first);
-
-    first = delete_node(first, 10);
-    print_list(first);
- 
-    int pos = search_node(first, 15);
-    if(pos != -1) 
+    // ncurses setup
+    initscr();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+    
+    struct Song *playlist = NULL;
+    int choice = 0;
+    int highlight = 0;
+    char *options[] = {"1. Add Song", "2. View Playlist", "3. Delete Song", "4. Exit"};
+    
+    while (1)
     {
-        printf("Found 15 at position %d\n", pos);
+        box(stdscr, 0, 0);
+        mvprintw(1, 2, "PLAYLIST MANAGER");
+        
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == highlight)
+            {
+                attron(A_REVERSE);
+                mvprintw(3 + i, 2, "%s", options[i]);
+                attroff(A_REVERSE);
+            }
+            else
+            {
+                mvprintw(3 + i, 2, "%s", options[i]);
+            }
+        }
+        
+        refresh();
+        choice = getch();
+        
+        if (choice == KEY_UP)
+        {
+            highlight--;
+            if (highlight < 0) highlight = 0;
+        }
+        else if (choice == KEY_DOWN)
+        {
+            highlight++;
+            if (highlight > 3) highlight = 3;
+        }
+        else if (choice == '\n' || choice == '\r')
+        {
+            clear();
+            
+            if (highlight == 0)
+            {
+                // Add song
+                echo();
+                curs_set(1);
+                char title[100];
+                mvprintw(2, 2, "Enter song title: ");
+                getstr(title);
+                playlist = add_song(playlist, title);
+                noecho();
+                curs_set(0);
+            }
+            else if (highlight == 1)
+            {
+                // View playlist
+                box(stdscr, 0, 0);
+                mvprintw(1, 2, "YOUR PLAYLIST");
+                
+                struct Song *current = playlist;
+                int row = 3;
+                int i = 1;
+                
+                if (current == NULL) {
+                    mvprintw(row, 2, "Playlist is empty!");
+                }
+                
+                while (current != NULL) {
+                    mvprintw(row, 2, "%d. %s", i, current->title);
+                    current = current->next;
+                    row++;
+                    i++;
+                }
+                
+                mvprintw(row + 2, 2, "Press any key to return...");
+                refresh();
+                getch();
+            }
+            else if (highlight == 2)
+            {
+                // Delete song
+                echo();
+                curs_set(1);
+                char title[100];
+                mvprintw(2, 2, "Enter song to delete: ");
+                getstr(title);
+                playlist = delete_song(playlist, title);
+                noecho();
+                curs_set(0);
+            }
+            else if (highlight == 3)
+            {
+                break;
+            }
+            
+            clear();
+        }
     }
-    else 
-    {
-        printf("15 not found\n");
+    
+    endwin();
+    
+    // Free memory
+    while (playlist != NULL) {
+        struct Song *temp = playlist;
+        playlist = playlist->next;
+        free(temp);
     }
-
+    
+    printf("Goodbye!\n");
     return 0;
 }
-struct Node* create_node(int value)
-{
-    struct Node *new_node = malloc(sizeof(struct Node));
-    new_node->data = value;
-    new_node->next = NULL;
-    return new_node;
-}
 
-void print_list(struct Node *head)
+struct Song* add_song(struct Song *head, char *title)
 {
-    struct Node *current = head;
-
-    while(current != NULL)
-    {
-        printf("%d -> ", current->data);
+    struct Song *new_song = malloc(sizeof(struct Song));
+    strcpy(new_song->title, title);
+    new_song->next = NULL;
+    
+    if (head == NULL) {
+        return new_song;
+    }
+    
+    struct Song *current = head;
+    while (current->next != NULL) {
         current = current->next;
     }
-    printf("NULL\n");
-}
-
-struct Node* insert_at_beginning(struct Node *head, int value)
-{
-    struct Node *new_node = create_node(value);
-
-    new_node->next = head;
-    head = new_node;
+    current->next = new_song;
     
     return head;
 }
 
-struct Node* insert_at_end(struct Node *head, int value)
+struct Song* delete_song(struct Song *head, char *title)
 {
-    struct Node *new_node = create_node(value);
-
-    if(head == NULL)
-    {
-        return new_node;
-    }
-
-    struct Node *current = head;
-
-    while(current->next != NULL)
-    {
-        current = current->next;
-    }
-
-    current->next = new_node;
-    return head;
-}
-
-struct Node* delete_node(struct Node *head, int value)
-{
-    if(head == NULL)
-    {
+    if (head == NULL) {
         return NULL;
     }
-
-    if(head->data == value)
-    {
-        struct Node *temp = head;
+    
+    if (strcmp(head->title, title) == 0) {
+        struct Song *temp = head;
         head = head->next;
         free(temp);
         return head;
     }
-
-    struct Node *current = head;
-    while (current->next != NULL && current->next->data != value)
-    {
+    
+    struct Song *current = head;
+    while (current->next != NULL && strcmp(current->next->title, title) != 0) {
         current = current->next;
     }
     
-    if(current->next != NULL)
-    {
-        struct Node *temp = current->next;
+    if (current->next != NULL) {
+        struct Song *temp = current->next;
         current->next = current->next->next;
         free(temp);
     }
     
     return head;
-}
-
-int search_node(struct Node *head, int value)
-{
-    struct Node *current = head;
-    int position = 0;
-    
-    while(current != NULL)
-    {
-        if(current->data == value)
-        {
-            return position;
-        }
-
-        current = current->next;
-        position++;
-    }
-    
-    return -1;
 }
